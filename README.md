@@ -42,7 +42,7 @@ opcode listing
 ====
 
 Opcode | Syntax | Explanation
-- | - | -
+---- | ---- | ----
 halt | 0 | `stop execution and terminate the program`
 set | 1 a b | `set register <a> to the value of <b>`
 push | 2 a | `push <a> onto the stack`
