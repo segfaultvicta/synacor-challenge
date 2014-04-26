@@ -86,12 +86,12 @@ class Vm:
 			return data
 		else:
 			register = unpacked - 32768
-			logging.debug("Request made to register {0} and is being summarily ignored, lol".format(register))
+			logging.warning("Request made to register {0} and is being summarily ignored, lol".format(register))
 			return data
 
 	def opcodeHalt(self):
 		"""stop execution and terminate the program. syntax: 0"""
-		logging.debug("HALT")
+		logging.info("{0}: HALT".format(self.position))
 		self.running = False
 
 	def opcodeSet(self):
@@ -104,12 +104,41 @@ class Vm:
 		self.advance()
 	def opcodeGt(self):
 		self.advance()
+	
 	def opcodeJmp(self):
+		"""jump to memory location <a>. syntax: 6 a"""
+		initial = self.position
 		self.advance()
+		a = self.resolve(self.memory.at(self.position))
+		logging.info("{0}: JMP {1} (jmp {2})".format(initial, a, self.u(a)))
+		self.position = self.u(a)
+
 	def opcodeJt(self):
+		"""if <a> is nonzero, jump to <b>. syntax: 7 a b"""
+		initial = self.position
 		self.advance()
+		a = self.resolve(self.memory.at(self.position))
+		self.advance()
+		b = self.resolve(self.memory.at(self.position))
+		logging.info("{0}: JT {1} {2} (jt {3} {4})".format(initial, a, b, self.u(a), self.u(b)))
+		if(self.u(a) != 0):
+			self.position = self.u(b)
+		else:
+			self.advance()
+
 	def opcodeJf(self):
+		"""if <a> is zero, jump to <b>. syntax: 8 a b"""
+		initial = self.position
 		self.advance()
+		a = self.resolve(self.memory.at(self.position))
+		self.advance()
+		b = self.resolve(self.memory.at(self.position))
+		logging.info("{0}: JF {1} {2} (jf {3} {4})".format(initial, a, b, self.u(a), self.u(b)))
+		if(self.u(a) == 0):
+			self.position = self.u(b)
+		else:
+			self.advance()
+
 	def opcodeAdd(self):
 		self.advance()
 	def opcodeMult(self):
@@ -133,10 +162,11 @@ class Vm:
 	
 	def opcodeOut(self):
 		"""write the character represented by ascii code <a> to the terminal. syntax: 19 a"""
+		initial = self.position
 		self.advance()
 		a = self.resolve(self.memory.at(self.position))
-		logging.debug("OUT {0}".format(a))
 		char = a.decode(encoding="ASCII")
+		logging.info("{0}: OUT {1} (out {2})".format(initial, a,char.replace("\n", "\\n")))
 		sys.stdout.write(char)
 		self.advance()
 	
@@ -144,11 +174,11 @@ class Vm:
 		self.advance()
 	
 	def opcodeNoop(self):
-		logging.debug("NOOP")
+		logging.info("{0}: NOOP".format(self.position))
 		self.advance()
 
 
-logging.basicConfig(filename="synacorchallenge.log",filemode="w",level=logging.DEBUG)
+logging.basicConfig(filename="synacorchallenge.log",filemode="w",level=logging.INFO)
 
 vm = Vm()
 logging.debug("VM initialised, loading challenge.bin...")
