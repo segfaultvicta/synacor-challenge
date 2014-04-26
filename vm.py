@@ -1,4 +1,4 @@
-import sys, struct
+import sys, struct, logging
 
 class Memory:
 	def __init__(self):
@@ -66,17 +66,32 @@ class Vm:
 
 		while self.running:
 			instruction = self.memory.at(self.position)
-			print("Instruction read as {0}, converting to integer to lookup opcode...".format(instruction))
-			code = Vm.codes[struct.unpack('<H', instruction)[0]]
-			print("Encountered opcode {0}, calling function...".format(code))
+			logging.debug("Instruction read as {0}, converting to integer to lookup opcode...".format(instruction))
+			code = Vm.codes[self.u(instruction)]
+			logging.debug("Encountered opcode {0}, calling function...".format(code))
 			dispatch[code]()
 
+	def u(self, data):
+		"""unpacks the data using self.unpacker"""
+		return self.unpacker.unpack(data)[0]
+
 	def advance(self, increment=1):
+		"""advances the memory register by increment."""
 		self.position += increment
+
+	def resolve(self, data):
+		"""return data if data is a literal value, return register contents if data is a register address."""
+		unpacked = self.u(data)
+		if(unpacked < 32768):
+			return data
+		else:
+			register = unpacked - 32768
+			logging.debug("Request made to register {0} and is being summarily ignored, lol".format(register))
+			return data
 
 	def opcodeHalt(self):
 		"""stop execution and terminate the program. syntax: 0"""
-		print("HALT")
+		logging.debug("HALT")
 		self.running = False
 
 	def opcodeSet(self):
@@ -118,23 +133,25 @@ class Vm:
 	
 	def opcodeOut(self):
 		"""write the character represented by ascii code <a> to the terminal. syntax: 19 a"""
-		print("OUT")
 		self.advance()
 		a = self.resolve(self.memory.at(self.position))
-		sys.stdout.write(a)
+		logging.debug("OUT {0}".format(a))
+		char = a.decode(encoding="ASCII")
+		sys.stdout.write(char)
 		self.advance()
 	
 	def opcodeIn(self):
 		self.advance()
 	
 	def opcodeNoop(self):
+		logging.debug("NOOP")
 		self.advance()
 
 
-
+logging.basicConfig(filename="synacorchallenge.log",filemode="w",level=logging.DEBUG)
 
 vm = Vm()
-print("VM initialised, loading challenge.bin...")
+logging.debug("VM initialised, loading challenge.bin...")
 vm.loadFile("challenge.bin")
-print("Challenge binary loaded into memory. Running VM...")
+logging.debug("Challenge binary loaded into memory. Running VM...")
 vm.run()
