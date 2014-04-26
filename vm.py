@@ -127,16 +127,63 @@ class Vm:
 		self.advance()
 
 	def opcodePush(self):
+		"""push <a> onto the stack. syntax: 2 a"""
+		initial = self.position
 		self.advance()
+		a = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		logging.info("{0}: PUSH {1} (push {2} to the stack)".format(initial, a, self.u(a)))
+		self.stack.append(a)
 
 	def opcodePop(self):
+		"""remove the top element from the stack and write it into <a>; empty stack = error. syntax: 3 a"""
+		initial = self.position
 		self.advance()
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+
+		data = self.stack.pop()
+
+		logging.info("{0}: POP {1} (pop {2} from the stack and write to :{3}".format(initial, a, data, register_index))
+		self.registers[register_index].set(data)
 
 	def opcodeEq(self):
+		"""set <a> to 1 if <b> is equal to <c>; set it to 0 otherwise. syntax: 4 a b c"""
+		initial = self.position
 		self.advance()
 
-	def opcodeGt(self):
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
 		self.advance()
+
+		b = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		c = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		logging.info("{0}: EQ {1} {2} {3} (if {4} = {5}, set :{6} to 1. Else set it to 0)".format(initial, a, b, c, self.u(b), self.u(c), register_index))
+
+
+	def opcodeGt(self):
+		"""set <a> to 1 if <b> is greater than <c>; set it to 0 otherwise. syntax: 5 a b c"""
+		initial = self.position
+		self.advance()
+
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+
+		b = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		c = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		logging.info("{0}: GT {1} {2} {3} (if {4} > {5}, set :{6} to 1. Else set it to 0)".format(initial, a, b, c, self.u(b), self.u(c), register_index))
+
 	
 	def opcodeJmp(self):
 		"""jump to memory location <a>. syntax: 6 a"""
@@ -173,34 +220,131 @@ class Vm:
 			self.advance()
 
 	def opcodeAdd(self):
+		"""assign into <a> the sum of <b> and <c> (modulo 32768). syntax: 9 a b c"""
+		initial = self.position
 		self.advance()
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+		b = self.resolve(self.memory.at(self.position))
+		self.advance()
+		c = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		logging.info("{0}: ADD {1} {2} {3} (add {4} and {5} and place the result in :{6})".format(initial, a, b, c, self.u(b), self.u(c), register_index))
 
 	def opcodeMult(self):
+		"""store into <a> the product of <b> and <c> (modulo 32768). syntax: 10 a b c"""
+		initial = self.position
 		self.advance()
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+		b = self.resolve(self.memory.at(self.position))
+		self.advance()
+		c = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		logging.info("{0}: MULT {1} {2} {3} (multiply {4} and {5} and place the result in :{6})".format(initial, a, b, c, self.u(b), self.u(c), register_index))
 
 	def opcodeMod(self):
+		"""store into <a> the remainder of <b> divided by <c>. syntax: 11 a b c"""
+		initial = self.position
 		self.advance()
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+		b = self.resolve(self.memory.at(self.position))
+		self.advance()
+		c = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		logging.info("{0}: MOD {1} {2} {3} (divide {4} and {5} and store the remainder in :{6})".format(initial, a, b, c, self.u(b), self.u(c), register_index))
 
 	def opcodeAnd(self):
+		"""stores into <a> the bitwise and of <b> and <c>. syntax: 12 a b c"""
+		initial = self.position
 		self.advance()
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+		b = self.resolve(self.memory.at(self.position))
+		self.advance()
+		c = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		logging.info("{0}: AND {1} {2} {3} (store the bitwise and of {4} and {5} in :{6})".format(initial, a, b, c, self.u(b), self.u(c), register_index))
 
 	def opcodeOr(self):
+		"""stores into <a> the bitwise or of <b> and <c>. syntax: 13 a b c"""
+		initial = self.position
 		self.advance()
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+		b = self.resolve(self.memory.at(self.position))
+		self.advance()
+		c = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		logging.info("{0}: OR {1} {2} {3} (store the bitwise or of {4} and {5} in :{6})".format(initial, a, b, c, self.u(b), self.u(c), register_index))
 
 	def opcodeNot(self):
+		"""stores 15-bit bitwise inverse of <b> in <a>. syntax: 14 a b"""
+		initial = self.position
 		self.advance()
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+		b = self.resolve(self.memory.at(self.position))
+		self.advance()
+
+		logging.info("{0}: NOT {1} {2} (store the bitwise not of {3} in :{4})".format(initial, a, b, self.u(b), register_index))
 
 	def opcodeRmem(self):
+		"""read memory at address <b> and write it to <a>. syntax: 15 a b"""
+		initial = self.position
 		self.advance()
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+		b = self.resolve(self.memory.at(self.position))
+		#b contains the address which we need to read
+		readdata = self.resolve(self.memory.at(self.u(b)))
+		self.advance()
+
+		logging.info("{0}: RMEM {1} {2} (read {3} at address {4} and write it to :{5})".format(initial, a, b, readdata, self.u(b), register_index))
 
 	def opcodeWmem(self):
+		"""write the value from <b> into memory at address <a>. syntax: 16 a b"""
+		initial = self.position
 		self.advance()
+		a = self.resolve(self.memory.at(self.position))
+		self.advance()
+		b = self.memory.at(self.position)
+		register_index = self.u(b) - 32768
+		readdata = self.registers[register_index].get()
+		self.advance()
+
+		logging.info("{0}: WMEM {1} {2} (write {3} from :{4} into memory at address {5})".format(initial, a, b, readdata, register_index, self.u(b)))
 
 	def opcodeCall(self):
+		"""write the address of the next instruction to the stack and jump to <a>. syntax: 17 a"""
+		initial = self.position
 		self.advance()
+		a = self.resolve(self.memory.at(self.position))
+		self.advance()
+		return_address = self.position
+
+		logging.info("{0}: CALL {1} (writing next instruction address ({2}) to stack and jumping to {3})".format(initial, a, return_address, self.u(a)))
+		self.stack.append(self.p(return_address))
+		self.position = self.u(a)
 
 	def opcodeRet(self):
-		self.advance()
+		"""remove the top element from the stack and jump to it; empty stack = halt. syntax: 18"""
+		return_address = self.stack.pop()
+		logging.info("{0}: RET (returning to {1})".format(self.position, return_address))
+		self.position = return_address
 	
 	def opcodeOut(self):
 		"""write the character represented by ascii code <a> to the terminal. syntax: 19 a"""
@@ -213,6 +357,8 @@ class Vm:
 		self.advance()
 	
 	def opcodeIn(self):
+		"""read a character from the terminal and write its ascii code to <a>. syntax: 20 a"""
+		initial = self.position
 		self.advance()
 	
 	def opcodeNoop(self):
