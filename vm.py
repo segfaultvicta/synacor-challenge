@@ -166,6 +166,10 @@ class Vm:
 
 		logging.info("{0}: EQ {1} {2} {3} (if {4} = {5}, set :{6} to 1. Else set it to 0)".format(initial, a, b, c, self.u(b), self.u(c), register_index))
 
+		if(b == c):
+			self.registers[register_index].set(self.p(1))
+		else:
+			self.registers[register_index].set(self.p(0))
 
 	def opcodeGt(self):
 		"""set <a> to 1 if <b> is greater than <c>; set it to 0 otherwise. syntax: 5 a b c"""
@@ -184,6 +188,10 @@ class Vm:
 
 		logging.info("{0}: GT {1} {2} {3} (if {4} > {5}, set :{6} to 1. Else set it to 0)".format(initial, a, b, c, self.u(b), self.u(c), register_index))
 
+		if(self.u(b) > self.u(c)):
+			self.registers[register_index].set(self.p(1))
+		else:
+			self.registers[register_index].set(self.p(0))
 	
 	def opcodeJmp(self):
 		"""jump to memory location <a>. syntax: 6 a"""
@@ -232,6 +240,13 @@ class Vm:
 		self.advance()
 
 		logging.info("{0}: ADD {1} {2} {3} (add {4} and {5} and place the result in :{6})".format(initial, a, b, c, self.u(b), self.u(c), register_index))
+
+		int_b = self.u(b)
+		int_c = self.u(c)
+		result = (int_b + int_c) % 32768
+
+		logging.debug("{0} + {1} = {2}".format(int_b, int_c, result))
+		self.registers[register_index].set(self.p(result)) 
 
 	def opcodeMult(self):
 		"""store into <a> the product of <b> and <c> (modulo 32768). syntax: 10 a b c"""
