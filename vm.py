@@ -13,15 +13,31 @@ class Memory:
 	def at(self, memloc):
 		return self.store[memloc]
 
+class Register:
+	def __init__(self, initial_value, register_index):
+		self.value = initial_value
+		self.index = register_index #for debugging purposes
+
+	def set(self, value):
+		logging.debug("Setting register {0} with data {1}".format(self.index, value))
+		self.value = value
+
+	def get(self):
+		logging.debug("Fetching register {0} value: {1}".format(self.index, self.value))
+		return self.value
+
 class Vm:
 	codes = ['halt', 'set', 'push', 'pop', 'eq', 'gt', 'jmp', 'jt', 'jf', 'add', 'mult', 'mod', 'and', 'or', 'not', 'rmem', 'wmem', 'call', 'ret', 'out', 'in', 'noop']
 
 	def __init__(self):
 		self.memory = Memory()
+		self.registers = []
 		self.stack = []
 		self.position = 0
 		self.running = True
 		self.unpacker = struct.Struct('<H')
+		for i in range(8):
+			self.registers.append(Register(self.p(0), i))
 
 	def loadFile(self, filename):
 		dump = []
@@ -65,15 +81,19 @@ class Vm:
 		}
 
 		while self.running:
+			logging.info("------------------------")
 			instruction = self.memory.at(self.position)
-			logging.debug("Instruction read as {0}, converting to integer to lookup opcode...".format(instruction))
 			code = Vm.codes[self.u(instruction)]
-			logging.debug("Encountered opcode {0}, calling function...".format(code))
+			logging.debug("{0}: instruction {1} resolves as opcode {2}".format(self.position, instruction, code))
 			dispatch[code]()
 
 	def u(self, data):
 		"""unpacks the data using self.unpacker"""
 		return self.unpacker.unpack(data)[0]
+
+	def p(self, value):
+ 		"""packs the value using self.unpacker"""
+ 		return self.unpacker.pack(value)
 
 	def advance(self, increment=1):
 		"""advances the memory register by increment."""
@@ -85,8 +105,8 @@ class Vm:
 		if(unpacked < 32768):
 			return data
 		else:
-			register = unpacked - 32768
-			logging.warning("Request made to register {0} and is being summarily ignored, lol".format(register))
+			register_index = unpacked - 32768
+			data = self.registers[register_index].get()
 			return data
 
 	def opcodeHalt(self):
@@ -95,13 +115,26 @@ class Vm:
 		self.running = False
 
 	def opcodeSet(self):
+		"""set register <a> to the value of <b>. syntax: 1 a b"""
+		initial = self.position
 		self.advance()
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+		b = self.resolve(self.memory.at(self.position))
+		logging.info("{0}: SET {1} {2} (set value of register :{3} to {4})".format(initial, a, b, register_index, self.u(b)))
+		self.registers[register_index].set(b)
+		self.advance()
+
 	def opcodePush(self):
 		self.advance()
+
 	def opcodePop(self):
 		self.advance()
+
 	def opcodeEq(self):
 		self.advance()
+
 	def opcodeGt(self):
 		self.advance()
 	
@@ -110,7 +143,7 @@ class Vm:
 		initial = self.position
 		self.advance()
 		a = self.resolve(self.memory.at(self.position))
-		logging.info("{0}: JMP {1} (jmp {2})".format(initial, a, self.u(a)))
+		logging.info("{0}: JMP {1} (jump to {2})".format(initial, a, self.u(a)))
 		self.position = self.u(a)
 
 	def opcodeJt(self):
@@ -120,7 +153,7 @@ class Vm:
 		a = self.resolve(self.memory.at(self.position))
 		self.advance()
 		b = self.resolve(self.memory.at(self.position))
-		logging.info("{0}: JT {1} {2} (jt {3} {4})".format(initial, a, b, self.u(a), self.u(b)))
+		logging.info("{0}: JT {1} {2} (if {3} is nonzero, jump to {4})".format(initial, a, b, self.u(a), self.u(b)))
 		if(self.u(a) != 0):
 			self.position = self.u(b)
 		else:
@@ -133,7 +166,7 @@ class Vm:
 		a = self.resolve(self.memory.at(self.position))
 		self.advance()
 		b = self.resolve(self.memory.at(self.position))
-		logging.info("{0}: JF {1} {2} (jf {3} {4})".format(initial, a, b, self.u(a), self.u(b)))
+		logging.info("{0}: JF {1} {2} (if {3} is zero, jump to {4})".format(initial, a, b, self.u(a), self.u(b)))
 		if(self.u(a) == 0):
 			self.position = self.u(b)
 		else:
@@ -141,22 +174,31 @@ class Vm:
 
 	def opcodeAdd(self):
 		self.advance()
+
 	def opcodeMult(self):
 		self.advance()
+
 	def opcodeMod(self):
 		self.advance()
+
 	def opcodeAnd(self):
 		self.advance()
+
 	def opcodeOr(self):
 		self.advance()
+
 	def opcodeNot(self):
 		self.advance()
+
 	def opcodeRmem(self):
 		self.advance()
+
 	def opcodeWmem(self):
 		self.advance()
+
 	def opcodeCall(self):
 		self.advance()
+
 	def opcodeRet(self):
 		self.advance()
 	
@@ -166,7 +208,7 @@ class Vm:
 		self.advance()
 		a = self.resolve(self.memory.at(self.position))
 		char = a.decode(encoding="ASCII")
-		logging.info("{0}: OUT {1} (out {2})".format(initial, a,char.replace("\n", "\\n")))
+		logging.info("{0}: OUT {1} (print {2} to the terminal)".format(initial, a,char.replace("\n", "\\n")))
 		sys.stdout.write(char)
 		self.advance()
 	
@@ -178,7 +220,7 @@ class Vm:
 		self.advance()
 
 
-logging.basicConfig(filename="synacorchallenge.log",filemode="w",level=logging.INFO)
+logging.basicConfig(filename="synacorchallenge.log",filemode="w",level=logging.DEBUG)
 
 vm = Vm()
 logging.debug("VM initialised, loading challenge.bin...")
