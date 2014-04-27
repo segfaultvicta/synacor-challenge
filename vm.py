@@ -84,7 +84,6 @@ class Vm:
 			logging.info("------------------------")
 			instruction = self.memory.at(self.position)
 			code = Vm.codes[self.u(instruction)]
-			logging.debug("{0}: instruction {1} resolves as opcode {2}".format(self.position, instruction, code))
 			dispatch[code]()
 
 	def u(self, data):
@@ -290,6 +289,13 @@ class Vm:
 
 		logging.info("{0}: AND {1} {2} {3} (store the bitwise and of {4} and {5} in :{6})".format(initial, a, b, c, self.u(b), self.u(c), register_index))
 
+		int_b = self.u(b)
+		int_c = self.u(c)
+		result = int_b & int_c
+		logging.debug("{0} & {1} = {2}".format(int_b, int_c, result))
+
+		self.registers[register_index].set(self.p(result))
+
 	def opcodeOr(self):
 		"""stores into <a> the bitwise or of <b> and <c>. syntax: 13 a b c"""
 		initial = self.position
@@ -304,6 +310,13 @@ class Vm:
 
 		logging.info("{0}: OR {1} {2} {3} (store the bitwise or of {4} and {5} in :{6})".format(initial, a, b, c, self.u(b), self.u(c), register_index))
 
+		int_b = self.u(b)
+		int_c = self.u(c)
+		result = int_b | int_c
+		logging.debug("{0} | {1} = {2}".format(int_b, int_c, result))
+
+		self.registers[register_index].set(self.p(result))
+
 	def opcodeNot(self):
 		"""stores 15-bit bitwise inverse of <b> in <a>. syntax: 14 a b"""
 		initial = self.position
@@ -315,6 +328,11 @@ class Vm:
 		self.advance()
 
 		logging.info("{0}: NOT {1} {2} (store the bitwise not of {3} in :{4})".format(initial, a, b, self.u(b), register_index))
+
+		result = (~(self.u(b)) & ((1 << 15) - 1))
+		logging.debug("~{0} = {1}".format(b, result))
+
+		self.registers[register_index].set(self.p(result))
 
 	def opcodeRmem(self):
 		"""read memory at address <b> and write it to <a>. syntax: 15 a b"""
