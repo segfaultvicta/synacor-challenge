@@ -13,17 +13,20 @@ class Memory:
 	def at(self, memloc):
 		return self.store[memloc]
 
+	def write(self, memloc, data):
+		self.store[memloc] = data
+
 class Register:
 	def __init__(self, initial_value, register_index):
 		self.value = initial_value
 		self.index = register_index #for debugging purposes
 
 	def set(self, value):
-		logging.debug("Setting register {0} with data {1}".format(self.index, value))
+		logging.debug(r"Setting register {0} with data {1}".format(self.index, value))
 		self.value = value
 
 	def get(self):
-		logging.debug("Fetching register {0} value: {1}".format(self.index, self.value))
+		logging.debug(r"Fetching register {0} value: {1}".format(self.index, self.value))
 		return self.value
 
 class Vm:
@@ -84,6 +87,7 @@ class Vm:
 			logging.info("------------------------")
 			instruction = self.memory.at(self.position)
 			code = Vm.codes[self.u(instruction)]
+			logging.debug("Encountered opcode {0}".format(code))
 			dispatch[code]()
 
 	def u(self, data):
@@ -261,6 +265,13 @@ class Vm:
 
 		logging.info("{0}: MULT {1} {2} {3} (multiply {4} and {5} and place the result in :{6})".format(initial, a, b, c, self.u(b), self.u(c), register_index))
 
+		int_b = self.u(b)
+		int_c = self.u(c)
+		result = (int_b * int_c) % 32768
+
+		logging.debug("{0} * {1} = {2}".format(int_b, int_c, result))
+		self.registers[register_index].set(self.p(result))
+
 	def opcodeMod(self):
 		"""store into <a> the remainder of <b> divided by <c>. syntax: 11 a b c"""
 		initial = self.position
@@ -274,6 +285,13 @@ class Vm:
 		self.advance()
 
 		logging.info("{0}: MOD {1} {2} {3} (divide {4} and {5} and store the remainder in :{6})".format(initial, a, b, c, self.u(b), self.u(c), register_index))
+
+		int_b = self.u(b)
+		int_c = self.u(c)
+		result = int_b % int_c
+
+		logging.debug("{0} % {1} = {2}".format(int_b, int_c, result))
+		self.registers[register_index].set(self.p(result))
 
 	def opcodeAnd(self):
 		"""stores into <a> the bitwise and of <b> and <c>. syntax: 12 a b c"""
@@ -347,19 +365,21 @@ class Vm:
 		self.advance()
 
 		logging.info("{0}: RMEM {1} {2} (read {3} at address {4} and write it to :{5})".format(initial, a, b, readdata, self.u(b), register_index))
+		self.registers[register_index].set(readdata)
 
 	def opcodeWmem(self):
 		"""write the value from <b> into memory at address <a>. syntax: 16 a b"""
 		initial = self.position
 		self.advance()
+		
 		a = self.resolve(self.memory.at(self.position))
 		self.advance()
-		b = self.memory.at(self.position)
-		register_index = self.u(b) - 32768
-		readdata = self.registers[register_index].get()
+
+		b = self.resolve(self.memory.at(self.position))
 		self.advance()
 
-		logging.info("{0}: WMEM {1} {2} (write {3} from :{4} into memory at address {5})".format(initial, a, b, readdata, register_index, self.u(b)))
+		logging.info("{0}: WMEM {1} {2} (write {3} into memory at address {4})".format(initial, a, b, self.u(b), self.u(a)))
+		self.memory.write(self.u(a),b)
 
 	def opcodeCall(self):
 		"""write the address of the next instruction to the stack and jump to <a>. syntax: 17 a"""
@@ -376,8 +396,8 @@ class Vm:
 	def opcodeRet(self):
 		"""remove the top element from the stack and jump to it; empty stack = halt. syntax: 18"""
 		return_address = self.stack.pop()
-		logging.info("{0}: RET (returning to {1})".format(self.position, return_address))
-		self.position = return_address
+		logging.info("{0}: RET (returning to {1})".format(self.position, self.u(return_address)))
+		self.position = self.u(return_address)
 	
 	def opcodeOut(self):
 		"""write the character represented by ascii code <a> to the terminal. syntax: 19 a"""
@@ -399,7 +419,7 @@ class Vm:
 		self.advance()
 
 
-logging.basicConfig(filename="synacorchallenge.log",filemode="w",level=logging.DEBUG)
+logging.basicConfig(filename="synacorchallenge.log",filemode="w",level=logging.WARNING)
 
 vm = Vm()
 logging.debug("VM initialised, loading challenge.bin...")
