@@ -84,7 +84,7 @@ class Vm:
 		}
 
 		while self.running:
-			logging.info("------------------------")
+			logging.debug("------------------------")
 			instruction = self.memory.at(self.position)
 			code = Vm.codes[self.u(instruction)]
 			logging.debug("Encountered opcode {0}".format(code))
@@ -413,6 +413,16 @@ class Vm:
 		"""read a character from the terminal and write its ascii code to <a>. syntax: 20 a"""
 		initial = self.position
 		self.advance()
+
+		a = self.memory.at(self.position)
+		register_index = self.u(a) - 32768
+		self.advance()
+
+		ch = sys.stdin.read(1)
+		logging.warning("{0}: IN {1} (write character {3} from terminal to :{2})".format(initial, a, register_index, ch))
+
+		self.registers[register_index].set(self.p(ord(ch)))
+
 	
 	def opcodeNoop(self):
 		logging.info("{0}: NOOP".format(self.position))
