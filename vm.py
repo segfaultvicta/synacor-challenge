@@ -1,4 +1,5 @@
-import sys, struct, logging
+#/usr/bin/python
+import sys, struct, logging, json
 
 class Memory:
 	def __init__(self):
@@ -15,6 +16,9 @@ class Memory:
 
 	def write(self, memloc, data):
 		self.store[memloc] = data
+
+	def dump(self):
+		return self.store
 
 class Register:
 	def __init__(self, initial_value, register_index):
@@ -47,7 +51,6 @@ class Vm:
 		for word in self.readFile(filename):
 			dump.append(word)
 		self.memory.load(dump)
-
 	def readFile(self, filename):
 		with open(filename, "rb") as f:
 			while True:
@@ -93,15 +96,12 @@ class Vm:
 	def u(self, data):
 		"""unpacks the data using self.unpacker"""
 		return self.unpacker.unpack(data)[0]
-
 	def p(self, value):
  		"""packs the value using self.unpacker"""
  		return self.unpacker.pack(value)
-
 	def advance(self, increment=1):
 		"""advances the memory register by increment."""
 		self.position += increment
-
 	def resolve(self, data):
 		"""return data if data is a literal value, return register contents if data is a register address."""
 		unpacked = self.u(data)
@@ -111,12 +111,10 @@ class Vm:
 			register_index = unpacked - 32768
 			data = self.registers[register_index].get()
 			return data
-
 	def opcodeHalt(self):
 		"""stop execution and terminate the program. syntax: 0"""
 		logging.info("{0}: HALT".format(self.position))
 		self.running = False
-
 	def opcodeSet(self):
 		"""set register <a> to the value of <b>. syntax: 1 a b"""
 		initial = self.position
@@ -128,7 +126,6 @@ class Vm:
 		logging.info("{0}: SET {1} {2} (set value of register :{3} to {4})".format(initial, a, b, register_index, self.u(b)))
 		self.registers[register_index].set(b)
 		self.advance()
-
 	def opcodePush(self):
 		"""push <a> onto the stack. syntax: 2 a"""
 		initial = self.position
@@ -138,7 +135,6 @@ class Vm:
 
 		logging.info("{0}: PUSH {1} (push {2} to the stack)".format(initial, a, self.u(a)))
 		self.stack.append(a)
-
 	def opcodePop(self):
 		"""remove the top element from the stack and write it into <a>; empty stack = error. syntax: 3 a"""
 		initial = self.position
@@ -151,7 +147,6 @@ class Vm:
 
 		logging.info("{0}: POP {1} (pop {2} from the stack and write to :{3}".format(initial, a, data, register_index))
 		self.registers[register_index].set(data)
-
 	def opcodeEq(self):
 		"""set <a> to 1 if <b> is equal to <c>; set it to 0 otherwise. syntax: 4 a b c"""
 		initial = self.position
@@ -173,7 +168,6 @@ class Vm:
 			self.registers[register_index].set(self.p(1))
 		else:
 			self.registers[register_index].set(self.p(0))
-
 	def opcodeGt(self):
 		"""set <a> to 1 if <b> is greater than <c>; set it to 0 otherwise. syntax: 5 a b c"""
 		initial = self.position
@@ -195,7 +189,6 @@ class Vm:
 			self.registers[register_index].set(self.p(1))
 		else:
 			self.registers[register_index].set(self.p(0))
-	
 	def opcodeJmp(self):
 		"""jump to memory location <a>. syntax: 6 a"""
 		initial = self.position
@@ -203,7 +196,6 @@ class Vm:
 		a = self.resolve(self.memory.at(self.position))
 		logging.info("{0}: JMP {1} (jump to {2})".format(initial, a, self.u(a)))
 		self.position = self.u(a)
-
 	def opcodeJt(self):
 		"""if <a> is nonzero, jump to <b>. syntax: 7 a b"""
 		initial = self.position
@@ -216,7 +208,6 @@ class Vm:
 			self.position = self.u(b)
 		else:
 			self.advance()
-
 	def opcodeJf(self):
 		"""if <a> is zero, jump to <b>. syntax: 8 a b"""
 		initial = self.position
@@ -229,7 +220,6 @@ class Vm:
 			self.position = self.u(b)
 		else:
 			self.advance()
-
 	def opcodeAdd(self):
 		"""assign into <a> the sum of <b> and <c> (modulo 32768). syntax: 9 a b c"""
 		initial = self.position
@@ -250,7 +240,6 @@ class Vm:
 
 		logging.debug("{0} + {1} = {2}".format(int_b, int_c, result))
 		self.registers[register_index].set(self.p(result)) 
-
 	def opcodeMult(self):
 		"""store into <a> the product of <b> and <c> (modulo 32768). syntax: 10 a b c"""
 		initial = self.position
@@ -271,7 +260,6 @@ class Vm:
 
 		logging.debug("{0} * {1} = {2}".format(int_b, int_c, result))
 		self.registers[register_index].set(self.p(result))
-
 	def opcodeMod(self):
 		"""store into <a> the remainder of <b> divided by <c>. syntax: 11 a b c"""
 		initial = self.position
@@ -292,7 +280,6 @@ class Vm:
 
 		logging.debug("{0} % {1} = {2}".format(int_b, int_c, result))
 		self.registers[register_index].set(self.p(result))
-
 	def opcodeAnd(self):
 		"""stores into <a> the bitwise and of <b> and <c>. syntax: 12 a b c"""
 		initial = self.position
@@ -313,7 +300,6 @@ class Vm:
 		logging.debug("{0} & {1} = {2}".format(int_b, int_c, result))
 
 		self.registers[register_index].set(self.p(result))
-
 	def opcodeOr(self):
 		"""stores into <a> the bitwise or of <b> and <c>. syntax: 13 a b c"""
 		initial = self.position
@@ -334,7 +320,6 @@ class Vm:
 		logging.debug("{0} | {1} = {2}".format(int_b, int_c, result))
 
 		self.registers[register_index].set(self.p(result))
-
 	def opcodeNot(self):
 		"""stores 15-bit bitwise inverse of <b> in <a>. syntax: 14 a b"""
 		initial = self.position
@@ -351,7 +336,6 @@ class Vm:
 		logging.debug("~{0} = {1}".format(b, result))
 
 		self.registers[register_index].set(self.p(result))
-
 	def opcodeRmem(self):
 		"""read memory at address <b> and write it to <a>. syntax: 15 a b"""
 		initial = self.position
@@ -366,7 +350,6 @@ class Vm:
 
 		logging.info("{0}: RMEM {1} {2} (read {3} at address {4} and write it to :{5})".format(initial, a, b, readdata, self.u(b), register_index))
 		self.registers[register_index].set(readdata)
-
 	def opcodeWmem(self):
 		"""write the value from <b> into memory at address <a>. syntax: 16 a b"""
 		initial = self.position
@@ -380,7 +363,6 @@ class Vm:
 
 		logging.info("{0}: WMEM {1} {2} (write {3} into memory at address {4})".format(initial, a, b, self.u(b), self.u(a)))
 		self.memory.write(self.u(a),b)
-
 	def opcodeCall(self):
 		"""write the address of the next instruction to the stack and jump to <a>. syntax: 17 a"""
 		initial = self.position
@@ -392,13 +374,11 @@ class Vm:
 		logging.info("{0}: CALL {1} (writing next instruction address ({2}) to stack and jumping to {3})".format(initial, a, return_address, self.u(a)))
 		self.stack.append(self.p(return_address))
 		self.position = self.u(a)
-
 	def opcodeRet(self):
 		"""remove the top element from the stack and jump to it; empty stack = halt. syntax: 18"""
 		return_address = self.stack.pop()
 		logging.info("{0}: RET (returning to {1})".format(self.position, self.u(return_address)))
 		self.position = self.u(return_address)
-	
 	def opcodeOut(self):
 		"""write the character represented by ascii code <a> to the terminal. syntax: 19 a"""
 		initial = self.position
@@ -408,28 +388,101 @@ class Vm:
 		logging.info("{0}: OUT {1} (print {2} to the terminal)".format(initial, a,char.replace("\n", "\\n")))
 		sys.stdout.write(char)
 		self.advance()
-	
 	def opcodeIn(self):
 		"""read a character from the terminal and write its ascii code to <a>. syntax: 20 a"""
-		initial = self.position
-		self.advance()
-
-		a = self.memory.at(self.position)
-		register_index = self.u(a) - 32768
-		self.advance()
-
 		ch = sys.stdin.read(1)
-		logging.warning("{0}: IN {1} (write character {3} from terminal to :{2})".format(initial, a, register_index, ch))
 
-		self.registers[register_index].set(self.p(ord(ch)))
+		if ch == "!":
+			logging.warning("WARNING: BECOMING SELF-AWARE")
+			self.aware()
+		else:
+			initial = self.position
+			self.advance()
 
-	
+			a = self.memory.at(self.position)
+			register_index = self.u(a) - 32768
+			self.advance()
+
+			logging.warning("{0}: IN {1} (write character {3} from terminal to :{2})".format(initial, a, register_index, ch))
+
+			self.registers[register_index].set(self.p(ord(ch)))
 	def opcodeNoop(self):
 		logging.info("{0}: NOOP".format(self.position))
 		self.advance()
 
+	def aware(self):
+		# munch the rest of the line from stdin and see if it's a recognised command
+		line = sys.stdin.readline()
+		w = line.split(' ')
+		fw = w[0].strip()
+		print fw
+		if fw == "save":
+			filename = "";
+			try:
+				filename = w[1].strip()
+			except Exception, e:
+				filename = "001"
+			print ">>> Save to: " + filename + "\n"
+			memfilename = filename + ".mem"
+			f = open(filename, 'w')
+			f2 = open(memfilename, 'w')
+			f.write(str(self.position) + "\n")
+			for reg in self.registers:
+				f.write(str(self.u(reg.get())) + "\n")
+			for i in self.stack:
+				f.write(str(self.u(i)) + "\n");
+			for m in self.memory.dump():
+				f2.write(m)
+			f.close()
+			f2.close()
+		elif fw == "load":
+			filename = "";
+			try:
+				filename = w[1].strip()
+			except Exception, e:
+				filename = "001"
+			print ">>> Load from: " + filename + "\n"
+			memfilename = filename + ".mem"
+			f = open(filename, 'r')
+			position_str = f.readline()
+			self.position = int(position_str)
+			for reg_n in xrange(0,7):
+				self.registers[reg_n].set(self.p(int(f.readline())))
+			self.stack = []
+			for line in f:
+				self.stack.append(self.p(int(line)))
+			self.loadFile(memfilename)
+			f.close()
+		elif fw == "setreg":
+			# do another thing
+			reg_n = int(w[1].strip())
 
-logging.basicConfig(filename="synacorchallenge.log",filemode="w",level=logging.WARNING)
+			reg_data = self.p(int(w[2].strip()))
+			print r">>> Setting Register {0} to {1}".format(reg_n, reg_data)
+			self.registers[reg_n].set(reg_data)
+		elif fw == "barfreg":
+			i = 0
+			for reg in self.registers:
+				print r">>> Register {0} contains {1}".format(i, self.u(reg.get()))
+				i += 1
+		elif fw == "barfstack":
+			i = 0
+			for item in self.stack:
+				print r">>> Stack @{0} contains {1}".format(i, self.u(item))
+				i += 1
+		elif fw == "loglevel":
+			if w[1].strip == "debug":
+				logging.getLogger().setLevel(logging.DEBUG)
+			elif w[1].strip == "info":
+				logging.getLogger().setLevel(logging.INFO)
+			elif w[1].strip == "warning":
+				logging.getLogger().setLevel(logging.WARNING)
+		else:
+			print ">>> Unrecognised command."
+		
+
+
+logging.basicConfig(filename="synacorchallenge.log",filemode="w",level=logging.INFO)
 
 vm = Vm()
 logging.debug("VM initialised, loading challenge.bin...")
