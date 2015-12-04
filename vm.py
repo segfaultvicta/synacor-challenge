@@ -499,9 +499,12 @@ class Vm:
 				print r">>> Stack @{0} contains {1}".format(i, self.u(item))
 				i += 1
 		elif fw == "logging":
-			if w[1].strip == "on":
+			print ">>> Logging!"
+			if w[1].strip() == "on":
+				print ">>> Logging: ON"
 				bump.flag(True)
-			elif w[1].strip == "off":
+			elif w[1].strip() == "off":
+				print ">>> Logging: OFF"
 				bump.flag(False)
 		else:
 			print ">>> Unrecognised command."
@@ -525,7 +528,7 @@ vm = Vm()
 
 logging.basicConfig(filename='challenge.log', level=logging.DEBUG)
 
-bump = Bump("challenge.log", vm, True)
+bump = Bump("challenge.log", vm, False)
 
 vm.loadFile("challenge.bin")
 vm.run()
